@@ -1,0 +1,44 @@
+{
+  "name": "admin",
+  "pswd": "adm1n",
+  "bool": true,
+  "year": 2023,
+  "null": null,
+  "object.object": {
+    "bool": true,
+    "null": {
+      "nums": [[[11,12,13],[14,15,16],[17,18,19]]]
+    }
+  },
+  "bool_array": [
+    true,
+    false
+  ],
+  "long_array": [
+    1,
+    2
+  ],
+  "null_array": [
+    null
+  ],
+  "text_array": [
+    "hello",
+    "world"
+  ],
+  "object.array": [
+    {
+      "name": "1st",
+      "_id_": 1,
+      "null": null,
+      "bool": false,
+      "nums": [[[11,12,13],[14,15,16],[17,18,19]]]
+    },
+    {
+      "name": "2nd",
+      "_id_": 2,
+      "null": null,
+      "bool": true,
+      "nums": [[[21,22,23],[24,25,26],[27,28,29]]]
+    }
+  ]
+}
