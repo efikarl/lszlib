@@ -11,6 +11,7 @@
     lszlib
 ---------------------------------------------------------------------------------
 --*/
+
 #ifndef LSZ_LIB_H_
 #define LSZ_LIB_H_
 
@@ -21,11 +22,12 @@
 
 #define LSZ_RET_OK                      0    // 成功
 #define LSZ_RET_E_ARG                   (-1) // 参数
-#define LSZ_RET_E_DUP                   (-2) // 重复
-#define LSZ_RET_E_NFD                   (-3) // 未见
-#define LSZ_RET_E_OUT                   (-4) // 耗尽
+#define LSZ_RET_E_OUT                   (-2) // 耗尽
+#define LSZ_RET_E_DUP                   (-3) // 重复
+#define LSZ_RET_E_NFD                   (-4) // 未见
 #define LSZ_RET_E_MIN                   (-5) // 下限
 #define LSZ_RET_E_MAX                   (-6) // 上限
+#define LSZ_RET_E_SEC                   (-7) // 风险
 
 #define void_of(ptr, index, size)       \
             ((char *) (ptr) + (index) * (size))
@@ -279,5 +281,32 @@ typedef void (*perm_callback_t)(int *perm, int m, int n);
 int lsz_perm(void *vec, size_t unit, int m, int n, perm_callback_t fn);
 
 #endif
+
+
+#ifndef LSZ_PATH
+#define LSZ_PATH
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#define PATH_NODE_UNIT  64
+#define PATH_NAME_UNIT  64
+
+typedef char path_node_t[PATH_NODE_UNIT];
+
+char *path_normalize (
+    const char          *src,
+    size_t              len
+);
+
+bool is_path_valid (
+    const char          *path
+);
+
+int path_from(const path_node_t *src_node, size_t  src_len, char **dst_path);
+int path_into(const char *src_path, path_node_t **dst_node, size_t *dst_len);
+
+#endif
+
 
 #endif // LSZ_LIB_H_

@@ -17,11 +17,12 @@
 
 #define LSZ_RET_OK                      0    // 成功
 #define LSZ_RET_E_ARG                   (-1) // 参数
-#define LSZ_RET_E_DUP                   (-2) // 重复
-#define LSZ_RET_E_NFD                   (-3) // 未见
-#define LSZ_RET_E_OUT                   (-4) // 耗尽
+#define LSZ_RET_E_OUT                   (-2) // 耗尽
+#define LSZ_RET_E_DUP                   (-3) // 重复
+#define LSZ_RET_E_NFD                   (-4) // 未见
 #define LSZ_RET_E_MIN                   (-5) // 下限
 #define LSZ_RET_E_MAX                   (-6) // 上限
+#define LSZ_RET_E_SEC                   (-7) // 风险
 
 #define void_of(ptr, index, size)       \
             ((char *) (ptr) + (index) * (size))
