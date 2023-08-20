@@ -22,44 +22,73 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef struct _lsz_tree_t lsz_tree_t;
+typedef void *  tree_t;
+
+typedef struct _lsz_tree_t              lsz_tree_t;
 
 #define LSZ_TREE_RED                    0
 #define LSZ_TREE_BLK                    1
 #define LSZ_TREE_NODE_SIGNATURE         ('t' << 8 | 'r')
-#define is_tree_signature(node)         ((node) && ((node)->s == LSZ_TREE_NODE_SIGNATURE))
 
 #pragma pack(1)
 struct _lsz_tree_t {
-    uint16_t             s;
+    uint16_t             _;
     uint16_t             c;
     lsz_tree_t          *p;
     lsz_tree_t          *l;
     lsz_tree_t          *r;
-    void                *k;
-    void                *v;
 };
 #pragma pack( )
+//
+// 签名验证
+//
+int is_tree_signature(const lsz_tree_t *node);
+int is_tree_null_node(const lsz_tree_t *node);
+//
+// 回调函数：键值获取函数
+//
+typedef void * (* lsz_tree_k_pointer_t) (
+    const lsz_tree_t    *node
+);
+typedef void * (* lsz_tree_v_pointer_t) (
+    const lsz_tree_t    *node
+);
+//
+// 回调函数：键的比较函数
+//
+typedef int  (* lsz_tree_k_compare_t) (
+    const void          *a,
+    const void          *b
+);
+//
+// 回调函数：节点资源释放
+//
+typedef void (* lsz_tree_node_free_t) (
+    const lsz_tree_t    *node
+);
 
 /*@fn: 植树
 --------------------------------------------------------------------------------
 [I]:
-    ksize               : 键的单位大小
+    sz_k                : 键的单位大小
                              0: 代表字串
                             !0: 代表字串以外的其它值类型
-    vsize               : 值的单位大小
+    sz_v                : 值的单位大小
                              0: 代表字串
                             !0: 代表字串以外的其它值类型
-    k_compare_callback  : 键的比较函数
+    fn_kptr             : 键的指针函数
+    fn_vptr             : 值的指针函数
+    fn_kcmp             : 键的比较函数
 
 [O]:
-    void *              : 树（指针需要使用者释放）
+    tree_t              : 树（指针需要使用者释放）
 --------------------------------------------------------------------------------
 */
-void *tree_new (
-    size_t              ksize,
-    size_t              vsize,
-    lsz_compare_t       k_compare_callback
+tree_t tree_new (
+    lsz_tree_k_pointer_t     fn_kptr,
+    lsz_tree_v_pointer_t     fn_vptr,
+    lsz_tree_k_compare_t     fn_kcmp,
+    lsz_tree_node_free_t     fn_free
 );
 
 /*@fn: 伐树
@@ -72,7 +101,7 @@ void *tree_new (
 --------------------------------------------------------------------------------
 */
 void tree_free (
-    void                                *tree
+    tree_t                              tree
 );
 
 /*@fn: 是否空树?
@@ -85,28 +114,14 @@ void tree_free (
 --------------------------------------------------------------------------------
 */
 int is_tree_empty (
-    const void          *tree
-);
-
-/*@fn: 是否空节点?
---------------------------------------------------------------------------------
-[I]:
-    node                : 目标节点
-
-[O]:
-    bool                : 0->否 1->是
---------------------------------------------------------------------------------
-*/
-int is_tree_null_node (
-    const lsz_tree_t    *node
+    const tree_t        tree
 );
 
 /*@fn: 插入附属键值对
 --------------------------------------------------------------------------------
 [I]:
     tree                : 目标红黑树
-    k                   : 键
-    v                   : 值
+    node                : 目标节点
 
 [O]:
     int                 : 错误代码
@@ -117,9 +132,8 @@ int is_tree_null_node (
 --------------------------------------------------------------------------------
 */
 int tree_insert (
-    void                *tree,
-    const void          *k,
-    const void          *v
+    tree_t              tree,
+    lsz_tree_t         *node
 );
 
 /*@fn: 删除附属键值对
@@ -148,8 +162,8 @@ void tree_delete (
                            !NULL: 成功
 --------------------------------------------------------------------------------
 */
-void *tree_min (
-    const void          *tree
+void * tree_min (
+    const tree_t        tree
 );
 
 /*@fn: 获取最大键的值
@@ -163,8 +177,8 @@ void *tree_min (
                            !NULL: 成功
 --------------------------------------------------------------------------------
 */
-void *tree_max (
-    const void          *tree
+void * tree_max (
+    const tree_t        tree
 );
 
 /*@fn: 获取目标键的值
@@ -174,13 +188,13 @@ void *tree_max (
     k                   : 键
 
 [O]:
-    void *              : 最大键的值的指针
+    void *              : 目标键的值的指针
                             NULL: 失败
                            !NULL: 成功
 --------------------------------------------------------------------------------
 */
-void *tree_search (
-    const void          *tree,
+void * tree_search (
+    const tree_t        tree,
     const void          *k
 );
 
@@ -196,9 +210,9 @@ void *tree_search (
                            !NULL: 成功
 --------------------------------------------------------------------------------
 */
-void *tree_prev (
-    const void          *tree,
-    void               **k
+void * tree_prev (
+    const tree_t        tree,
+    void                **k
 );
 
 /*@fn: 获取下一个节点的键值对
@@ -213,17 +227,16 @@ void *tree_prev (
                            !NULL: 成功
 --------------------------------------------------------------------------------
 */
-void *tree_next (
-    const void          *tree,
-    void               **k
+void * tree_next (
+    const tree_t        tree,
+    void                **k
 );
 
 //
-//! 遍历回调函数（安全）
+//! 遍历回调函数
 //
 typedef void (* lsz_tree_for_each_callback_t) (
-    const void                          *k,
-    void                                *v,
+    const lsz_tree_t                    *node,
     void                                *data
 );
 
@@ -239,8 +252,8 @@ typedef void (* lsz_tree_for_each_callback_t) (
 --------------------------------------------------------------------------------
 */
 void tree_for_each (
-    const void                          *tree,
-    lsz_tree_for_each_callback_t         callback_func,
+    const tree_t                        tree,
+    lsz_tree_for_each_callback_t        callback_func,
     void                                *callback_data
 );
 

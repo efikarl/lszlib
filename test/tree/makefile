@@ -15,7 +15,7 @@ LDFLAGS := -l lszlib
 LIB_INC := -L ${HOME}/.local/lib
 HDR_INC := -I ${HOME}/.local/include/lszlib
 
-run: build
+run: clean build
 	./$(APP)
 
 # 默认

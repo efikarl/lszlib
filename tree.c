@@ -26,38 +26,73 @@
 
 #include "base.h"
 #include "tree.h"
-//
-// 叶子节点
-//
-lsz_tree_t __lsz_tree_nil__ = {
-    .s = LSZ_TREE_NODE_SIGNATURE,
-    .c = LSZ_TREE_BLK,
-};
 
-#define is_tree_null_node(node) \
-    ((node) && ((node) == &__lsz_tree_nil__))
-
+#define LSZ_TREE_PRIV_SIGNATURE     ('t' << 24 | 'r' << 16 | 'e' << 8 | 'e')
 //
 // 私有数据
 //
 typedef struct _lsz_tree_private_t {
-    lsz_tree_t                 *root;
-    lsz_tree_t                 *null;
-    size_t                      sz_k;
-    size_t                      sz_v;
-    lsz_compare_t               cb_k;
-    pthread_mutex_t             lock;
+    uint32_t                      _;
+    pthread_mutex_t            lock;
+    lsz_tree_t                *root;
+    lsz_tree_k_pointer_t    fn_kptr;
+    lsz_tree_v_pointer_t    fn_vptr;
+    lsz_tree_k_compare_t    fn_kcmp;
+    lsz_tree_node_free_t    fn_free;
 } lsz_tree_private_t;
 //
 // 私有成员
 //
-#define lsz_tree_this(tree, field) \
-    (((lsz_tree_private_t *) (tree))->field)
+#define lsz_tree_this(tree, field)  (((lsz_tree_private_t *) (tree))->field)
+
 //
 // 签名验证
 //
-#define is_priv_signature(this) \
-    ((this) && (lsz_tree_this(this, null) == &__lsz_tree_nil__))
+int is_priv_signature(lsz_tree_private_t *this)
+{
+    return ((this) && (this->_ == LSZ_TREE_PRIV_SIGNATURE));
+}
+
+int is_tree_signature(const lsz_tree_t   *node)
+{
+    return ((node) && (node->_ == LSZ_TREE_NODE_SIGNATURE));
+}
+
+//
+// 叶子节点
+//
+lsz_tree_t __lsz_tree_null_node__ = {
+    ._ = LSZ_TREE_NODE_SIGNATURE,
+    .c = LSZ_TREE_BLK,
+};
+
+int is_tree_null_node(const lsz_tree_t *node)
+{
+    return (node == &__lsz_tree_null_node__);
+}
+
+//
+// 键值获取
+//
+void *k_of_tree(lsz_tree_private_t *this, const lsz_tree_t *node)
+{
+    if (!is_priv_signature(this) || !is_tree_signature(node) || is_tree_null_node(node)) {
+        assert(!!0);
+        return NULL;
+    } else {
+        return this->fn_kptr(node);
+    }
+}
+
+void *v_of_tree(lsz_tree_private_t *this, const lsz_tree_t *node)
+{
+    if (!is_priv_signature(this) || !is_tree_signature(node) || is_tree_null_node(node)) {
+        assert(!!0);
+        return NULL;
+    } else {
+        return this->fn_vptr(node);
+    }
+}
 
 /*
 --------------------------------------------------------------------------------
@@ -79,9 +114,11 @@ typedef struct _lsz_tree_private_t {
 */
 void lsz_tree_rotate_l(lsz_tree_t **root, lsz_tree_t *l)
 {
+    if (!is_tree_signature(*root) || !is_tree_signature(l) || !is_tree_signature(l->r)) {
+        assert(!!0);
+    }
+
     lsz_tree_t *r = l->r;
-    assert(l);
-    assert(r);
     // r的父亲
     r->p = l->p;
     if (is_tree_null_node(l->p)) {
@@ -116,9 +153,11 @@ void lsz_tree_rotate_l(lsz_tree_t **root, lsz_tree_t *l)
 */
 void lsz_tree_rotate_r(lsz_tree_t **root, lsz_tree_t *r)
 {
+    if (!is_tree_signature(*root) || !is_tree_signature(r) || !is_tree_signature(r->l)) {
+        assert(!!0);
+    }
+
     lsz_tree_t *l = r->l;
-    assert(r);
-    assert(l);
     // l的父亲
     l->p = r->p;
     if (is_tree_null_node(r->p)) {
@@ -147,9 +186,9 @@ void lsz_tree_rotate_r(lsz_tree_t **root, lsz_tree_t *r)
 */
 void lsz_tree_transplant(lsz_tree_t **root, lsz_tree_t *u, lsz_tree_t *v)
 {
-    assert(u);
-    assert(v);
-    assert(u != &__lsz_tree_nil__);
+    if (!is_tree_signature(*root) || !is_tree_signature(u) || !is_tree_signature(v) || is_tree_null_node(u)) {
+        assert(!!0);
+    }
 
     if (is_tree_null_node(u->p)) {
         *root = v;
@@ -168,6 +207,9 @@ void lsz_tree_transplant(lsz_tree_t **root, lsz_tree_t *u, lsz_tree_t *v)
 */
 void lsz_tree_insert_fixup(lsz_tree_t **root, lsz_tree_t *i)
 {
+    if (!is_tree_signature(*root) || !is_tree_signature(i)) {
+        assert(!!0);
+    }
     //
     // 插入操作可能破坏：性质2，性质4
     //
@@ -223,6 +265,9 @@ void lsz_tree_insert_fixup(lsz_tree_t **root, lsz_tree_t *i)
 */
 void lsz_tree_delete_fixup(lsz_tree_t **root, lsz_tree_t *i)
 {
+    if (!is_tree_signature(*root) || !is_tree_signature(i)) {
+        assert(!!0);
+    }
     //
     // 删除操作可能破坏：性质1，性质2，性质4
     //
@@ -302,46 +347,11 @@ void lsz_tree_delete_fixup(lsz_tree_t **root, lsz_tree_t *i)
 --------------------------------------------------------------------------------
 */
 
-lsz_tree_t *lsz_tree_new(const void *tree, const void *k, const void *v)
-{
-    if (!is_priv_signature(tree) || !k) {
-        assert(!!0);
-        return NULL;
-    }
-
-    lsz_tree_t *node = calloc(1, sizeof(lsz_tree_t));
-    if (!node) {
-        assert(!!0);
-        return NULL;
-    }
-    if (k) {
-        if (!lsz_tree_this(tree, sz_k)) {
-            node->k = strdup(k);
-        } else {
-            node->k = malloc(lsz_tree_this(tree, sz_k)); if (node->k) memcpy(node->k, k, lsz_tree_this(tree, sz_k));
-        }
-    }
-    if (v) {
-        if (!lsz_tree_this(tree, sz_v)) {
-            node->v = strdup(v);
-        } else {
-            node->v = malloc(lsz_tree_this(tree, sz_v)); if (node->v) memcpy(node->v, v, lsz_tree_this(tree, sz_v));
-        }
-    }
-    node->s = LSZ_TREE_NODE_SIGNATURE;
-    node->c = LSZ_TREE_BLK;
-    node->p = &__lsz_tree_nil__;
-    node->l = &__lsz_tree_nil__;
-    node->r = &__lsz_tree_nil__;
-
-    return node;
-}
-
 lsz_tree_t *lsz_tree_min(lsz_tree_t *node)
 {
     if (!is_tree_signature(node)) {
         assert(!!0);
-        return NULL;
+        return &__lsz_tree_null_node__;
     }
 
     lsz_tree_t *find = node;
@@ -356,7 +366,7 @@ lsz_tree_t *lsz_tree_max(lsz_tree_t *node)
 {
     if (!is_tree_signature(node)) {
         assert(!!0);
-        return NULL;
+        return &__lsz_tree_null_node__;
     }
 
     lsz_tree_t *find = node;
@@ -367,30 +377,11 @@ lsz_tree_t *lsz_tree_max(lsz_tree_t *node)
     return find;
 }
 
-lsz_tree_t *lsz_tree_search(const void *tree, const void *k)
-{
-    if (!is_priv_signature(tree) || !k) {
-        assert(!!0);
-        return NULL;
-    }
-
-    int i = 0;
-    lsz_tree_t *node = lsz_tree_this(tree, root);
-    while ((node != lsz_tree_this(tree, null)) && (i = lsz_tree_this(tree, cb_k)(k, node->k))) {
-        if (i < 0) {
-            node = node->l;
-        } else {
-            node = node->r;
-        }
-    }
-    return node;
-}
-
 lsz_tree_t *lsz_tree_prev(lsz_tree_t *node)
 {
     if (!is_tree_signature(node)) {
         assert(!!0);
-        return NULL;
+        return &__lsz_tree_null_node__;
     }
 
     if (is_tree_null_node(node)) {
@@ -412,7 +403,7 @@ lsz_tree_t *lsz_tree_next(lsz_tree_t *node)
 {
     if (!is_tree_signature(node)) {
         assert(!!0);
-        return NULL;
+        return &__lsz_tree_null_node__;
     }
 
     if (is_tree_null_node(node)) {
@@ -438,89 +429,166 @@ void lsz_tree_for_each(lsz_tree_t *node, lsz_tree_for_each_callback_t cb_func, v
 
     if (!is_tree_null_node(node)) {
         lsz_tree_for_each(node->l, cb_func, cb_data);
-        if (cb_func) cb_func((const void *) node->k, node->v, cb_data);
+        if (cb_func) cb_func(node, cb_data);
         lsz_tree_for_each(node->r, cb_func, cb_data);
     }
 }
 
-void lsz_tree_reset_nil(void *tree)
+void lsz_tree_reset_nil(void)
 {
-    if (!is_priv_signature(tree)) {
-        assert(!!0);
-    }
-    lsz_tree_this(tree, null)->s = LSZ_TREE_NODE_SIGNATURE;
-    lsz_tree_this(tree, null)->c = LSZ_TREE_BLK;
+    __lsz_tree_null_node__._ = LSZ_TREE_NODE_SIGNATURE;
+    __lsz_tree_null_node__.c = LSZ_TREE_BLK;
 }
 
 /*
 --------------------------------------------------------------------------------
 */
 
-void *tree_new(size_t sz_k, size_t sz_v, lsz_compare_t cb_k)
+lsz_tree_t *lsz_tree_search(const tree_t tree, const void *k)
 {
-    lsz_tree_private_t *this = calloc(1, sizeof(lsz_tree_private_t));
-    if (!cb_k) {
-        printf("error: k_compare_callback is null\n");
+    if (!is_priv_signature(tree) || !k) {
+        assert(!!0);
+        return &__lsz_tree_null_node__;
+    }
+    lsz_tree_t *node = lsz_tree_this(tree, root);
+
+    int i = 0;
+    while ((!is_tree_null_node(node)) && (i = lsz_tree_this(tree, fn_kcmp)(k, k_of_tree(tree, node)))) {
+        if (i < 0) {
+            node = node->l;
+        } else {
+            node = node->r;
+        }
+    }
+    return node;
+}
+
+/*
+--------------------------------------------------------------------------------
+*/
+
+tree_t tree_new(lsz_tree_k_pointer_t fn_kptr, lsz_tree_v_pointer_t fn_vptr, lsz_tree_k_compare_t fn_kcmp, lsz_tree_node_free_t fn_free)
+{
+    if (!fn_kptr) {
+        printf("error: fn_kptr is null\n");
         return NULL;
     }
+    if (!fn_vptr) {
+        printf("error: fn_vptr is null\n");
+        return NULL;
+    }
+    if (!fn_kcmp) {
+        printf("error: fn_kcmp is null\n");
+        return NULL;
+    }
+    if (!fn_free) {
+        printf("error: fn_free is null\n");
+        return NULL;
+    }
+    //
+    // 简单测试：键的比较函数
+    //
+    int8_t is_fn_kcmp_ok = 1;
+    int8_t a[32];
+    int8_t b[32];
+    memset(a, 0x00, sizeof(a));
+    memset(b, 0x00, sizeof(b));
+    a[0] = 'a';
+    b[0] = 'b';
+    if (!(fn_kcmp(&a, &b) < 0)) {
+        is_fn_kcmp_ok = 0;
+        printf("error: fn_kcmp is invalid for '<': %d\n", fn_kcmp(&a, &b));
+    }
+    if (!(fn_kcmp(&b, &a) > 0)) {
+        is_fn_kcmp_ok = 0;
+        printf("error: fn_kcmp is invalid for '>': %d\n", fn_kcmp(&a, &b));
+    }
+    a[0] = 'e';
+    b[0] = 'e';
+    if (!(fn_kcmp(&a, &b) == 0)) {
+        is_fn_kcmp_ok = 0;
+        printf("error: fn_kcmp is invalid for '==' %d\n", fn_kcmp(&a, &b));
+    }
+    if (!is_fn_kcmp_ok) {
+        return NULL;
+    }
+
+    lsz_tree_private_t *this = calloc(1, sizeof(lsz_tree_private_t));
     if (!this) {
         printf("error: out of resources of calloc\n");
         return NULL;
     }
-    this->root  = &__lsz_tree_nil__;
-    this->null  = &__lsz_tree_nil__;
-    this->sz_k  = sz_k;
-    this->sz_v  = sz_v;
-    this->cb_k  = cb_k;
+    this->_       = LSZ_TREE_PRIV_SIGNATURE;
+    this->root    = &__lsz_tree_null_node__;
+    this->fn_kptr = fn_kptr;
+    this->fn_vptr = fn_vptr;
+    this->fn_kcmp = fn_kcmp;
+    this->fn_free = fn_free;
     pthread_mutex_init(&this->lock, NULL);
 
-    return (void *) this;
+    return (tree_t) this;
 }
 
-int is_tree_empty(const void *tree)
+int is_tree_empty(const tree_t tree)
 {
-    if (!tree) {
-        printf("error: invalid parameter - tree (null)\n");
-        return 0;
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
+        return !!1;
     }
 
-    if (lsz_tree_this(tree, root) == lsz_tree_this(tree, null)) {
+    if (is_tree_null_node(lsz_tree_this(tree, root))) {
         return !!1;
     } else {
         return !!0;
     }
 }
 
-int tree_insert(void *tree, const void *k, const void *v)
+int tree_insert(tree_t tree, lsz_tree_t *node)
 {
-    if (!tree) {
-        return LSZ_RET_E_ARG;
-    }
-    if (!k) {
-        return LSZ_RET_E_ARG;
-    }
+    int retn = LSZ_RET_OK;
 
-    lsz_tree_t *node = NULL;
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
+        return LSZ_RET_E_ARG;
+    }
+    if (!node) {
+        printf("error: invalid parameter - node\n");
+        return LSZ_RET_E_ARG;
+    }
     //
-    // 如果节点存在，直接返回
+    // 节点的初始化，强制执行
     //
-    node = lsz_tree_search(tree, k);
-    if (node != lsz_tree_this(tree, null)) {
-        return LSZ_RET_E_DUP;
+    node->_ = LSZ_TREE_NODE_SIGNATURE;
+    node->c = LSZ_TREE_BLK;
+    node->p = &__lsz_tree_null_node__;
+    node->l = &__lsz_tree_null_node__;
+    node->r = &__lsz_tree_null_node__;
+    void *k = k_of_tree(tree, node);
+    if (!k) {
+        printf("warning: k_of_tree is null\n");
+        return LSZ_RET_E_ARG;
+    }
+    void *v = v_of_tree(tree, node);
+    if (!v) {
+        printf("warning: v_of_tree is null\n");
     }
 
     pthread_mutex_lock(&lsz_tree_this(tree, lock));
-
-    node = lsz_tree_new(tree, k, v);
-    if (!node) {
-        return LSZ_RET_E_OUT;
+    //
+    // 如果节点存在，直接返回
+    //
+    lsz_tree_t *temp = lsz_tree_search(tree, k);
+    if (!is_tree_null_node(temp)) {
+        retn = LSZ_RET_E_DUP;
+        goto eofn;
     }
+
     lsz_tree_t *n = lsz_tree_this(tree, root);
-    lsz_tree_t *p = lsz_tree_this(tree, null);
+    lsz_tree_t *p = &  __lsz_tree_null_node__;
     // 寻找其父
-    while (n != lsz_tree_this(tree, null)) {
+    while (!is_tree_null_node(n)) {
         p = n;
-        if (lsz_tree_this(tree, cb_k)(node->k, n->k) < 0) {
+        if (lsz_tree_this(tree, fn_kcmp)(k, k_of_tree(tree, n)) < 0) {
             n = n->l;
         } else {
             n = n->r;
@@ -528,10 +596,10 @@ int tree_insert(void *tree, const void *k, const void *v)
     }
     node->p = p;
     // 插入节点
-    if (p == lsz_tree_this(tree, null)) {
+    if (is_tree_null_node(p)) {
         lsz_tree_this(tree, root) = node;
     } else {
-        if (lsz_tree_this(tree, cb_k)(node->k, p->k) < 0) {
+        if (lsz_tree_this(tree, fn_kcmp)(k, k_of_tree(tree, p)) < 0) {
             p->l = node;
         } else {
             p->r = node;
@@ -541,46 +609,45 @@ int tree_insert(void *tree, const void *k, const void *v)
     // 红黑平衡
     lsz_tree_insert_fixup(&lsz_tree_this(tree, root), node);
 
+eofn:
     pthread_mutex_unlock(&lsz_tree_this(tree, lock));
 
-    return LSZ_RET_OK;
+    return retn;
 }
 
-void tree_delete(void *tree, void *k)
+void tree_delete(tree_t tree, void *k)
 {
-    if (!tree) {
-        printf("error: invalid parameter - tree (null)\n");
-        return;
-    }
-
-    lsz_tree_t *node = NULL;
-    lsz_tree_t *succ = NULL;
-    //
-    // 如果没此节点，直接返回
-    //
-    node = lsz_tree_search(tree, k);
-    if (node == lsz_tree_this(tree, null)) {
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
         return;
     }
 
     pthread_mutex_lock(&lsz_tree_this(tree, lock));
+    //
+    // 如果没此节点，直接返回
+    //
+    lsz_tree_t *node = lsz_tree_search(tree, k);
+    if (is_tree_null_node(node)) {
+        goto eofn;
+    }
 
+    lsz_tree_t *succ          = NULL;
     lsz_tree_t *node_to_fixup = NULL;
     uint8_t     delete_colour = node->c;
 
-    if ((node->l == lsz_tree_this(tree, null)) && (node->r == lsz_tree_this(tree, null))) {
+    if (is_tree_null_node(node->l) && is_tree_null_node(node->r)) {
         //
         // [1] 叶子节点
         //
-        node_to_fixup = lsz_tree_this(tree, null);
-        lsz_tree_transplant(&lsz_tree_this(tree, root), node, lsz_tree_this(tree, null));
-    } else if ((node->l != lsz_tree_this(tree, null)) && (node->r == lsz_tree_this(tree, null))) {
+        node_to_fixup = &__lsz_tree_null_node__;
+        lsz_tree_transplant(&lsz_tree_this(tree, root), node, &__lsz_tree_null_node__);
+    } else if (!is_tree_null_node(node->l) && is_tree_null_node(node->r)) {
         //
         // [2] 存在左子（必然红色）：直接移植
         //
         node->l->c = node->c;
         lsz_tree_transplant(&lsz_tree_this(tree, root), node, node->l);
-    } else if ((node->l == lsz_tree_this(tree, null)) && (node->r != lsz_tree_this(tree, null))) {
+    } else if (is_tree_null_node(node->l) && !is_tree_null_node(node->r)) {
         //
         // [3] 存在右子（必然红色）：直接移植
         //
@@ -616,81 +683,74 @@ void tree_delete(void *tree, void *k)
     if (node_to_fixup && (delete_colour == LSZ_TREE_BLK)) {
         // 红黑平衡
         lsz_tree_delete_fixup(&lsz_tree_this(tree, root), node_to_fixup);
-        lsz_tree_reset_nil(tree);
+        lsz_tree_reset_nil();
     }
     //
     // 释放资源
     //
-    if (node->k) {
-        free(node->k);
-    }
-    if (node->v) {
-        free(node->v);
-    }
-    if (node) {
-        free(node);
-    }
+    lsz_tree_this(tree, fn_free)(node);
 
+eofn:
     pthread_mutex_unlock(&lsz_tree_this(tree, lock));
 }
 
-void *tree_min(const void *tree)
+void *tree_min(const tree_t tree)
 {
-    if (!tree) {
-        printf("error: invalid parameter - tree (null)\n");
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
         return NULL;
     }
 
     lsz_tree_t *node = lsz_tree_min(lsz_tree_this(tree, root));
-    if (node == lsz_tree_this(tree, null)) {
+    if (is_tree_null_node(node)) {
         return NULL;
     } else {
-        return node->v;
+        return v_of_tree(tree, node);
     }
 }
 
-void *tree_max(const void *tree)
+void *tree_max(const tree_t tree)
 {
-    if (!tree) {
-        printf("error: invalid parameter - tree (null)\n");
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
         return NULL;
     }
 
     lsz_tree_t *node = lsz_tree_max(lsz_tree_this(tree, root));
-    if (node == lsz_tree_this(tree, null)) {
+    if (is_tree_null_node(node)) {
         return NULL;
     } else {
-        return node->v;
+        return v_of_tree(tree, node);
     }
 }
 
-void *tree_search(const void *tree, const void *k)
+void *tree_search(const tree_t tree, const void *k)
 {
-    if (!tree) {
-        printf("error: invalid parameter - tree (null)\n");
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
         return NULL;
     }
     if (!k) {
-        printf("error: invalid parameter - k    (null)\n");
+        printf("error: invalid parameter - k\n");
         return NULL;
     }
 
     lsz_tree_t *node = lsz_tree_search(tree, k);
-    if (node == lsz_tree_this(tree, null)) {
+    if (is_tree_null_node(node)) {
         return NULL;
     } else {
-        return node->v;
+        return v_of_tree(tree, node);
     }
 }
 
-void *tree_prev(const void *tree, void **k)
+void *tree_prev(const tree_t tree, void **k)
 {
-    if (!tree) {
-        printf("error: invalid parameter - tree (null)\n");
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
         return NULL;
     }
     if (!k) {
-        printf("error: invalid parameter - k    (null)\n");
+        printf("error: invalid parameter - k\n");
         return NULL;
     }
 
@@ -700,19 +760,23 @@ void *tree_prev(const void *tree, void **k)
     } else {
         node = lsz_tree_prev(lsz_tree_search(tree, *k));
     }
-    *k = node->k;
+    if (is_tree_null_node(node)) {
+        *k  =  NULL;
+        return NULL;
+    }
 
-    return node->v;
+    *k  =  k_of_tree(tree, node);
+    return v_of_tree(tree, node);
 }
 
-void *tree_next(const void *tree, void **k)
+void *tree_next(const tree_t tree, void **k)
 {
-    if (!tree) {
-        printf("error: invalid parameter - tree (null)\n");
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
         return NULL;
     }
     if (!k) {
-        printf("error: invalid parameter - k    (null)\n");
+        printf("error: invalid parameter - k\n");
         return NULL;
     }
 
@@ -722,29 +786,35 @@ void *tree_next(const void *tree, void **k)
     } else {
         node = lsz_tree_next(lsz_tree_search(tree, *k));
     }
-    *k = node->k;
+    if (is_tree_null_node(node)) {
+        *k  =  NULL;
+        return NULL;
+    }
 
-    return node->v;
+    *k  =  k_of_tree(tree, node);
+    return v_of_tree(tree, node);
 }
 
-void tree_for_each(const void *tree, lsz_tree_for_each_callback_t cb_func, void *cb_data)
+void tree_for_each(const tree_t tree, lsz_tree_for_each_callback_t cb_func, void *cb_data)
 {
-    if (!tree) {
-        printf("error: invalid parameter - tree (null)\n");
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
         return;
     }
 
     lsz_tree_for_each(lsz_tree_this(tree, root), cb_func, cb_data);
 }
 
-void tree_free(void *tree)
+void tree_free(tree_t tree)
 {
-    if (!tree) {
+    if (!is_priv_signature(tree)) {
+        printf("error: invalid parameter - tree\n");
         return;
     }
+
     lsz_tree_t *node = NULL;
-    while ((node = lsz_tree_min(lsz_tree_this(tree, root))) != lsz_tree_this(tree, null)) {
-        tree_delete(tree, node->k);
+    while (!is_tree_null_node(node = lsz_tree_min(lsz_tree_this(tree, root)))) {
+        tree_delete(tree, k_of_tree(tree, node));
     }
     free(tree);
 }

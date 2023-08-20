@@ -153,49 +153,65 @@ int list_for_each (
 
 #ifndef LSZ_TREE
 #define LSZ_TREE
+#include <stdint.h>
+#include <stddef.h>
 
-typedef struct _lsz_tree_t lsz_tree_t;
+typedef void *  tree_t;
+
+typedef struct _lsz_tree_t              lsz_tree_t;
 
 #define LSZ_TREE_RED                    0
 #define LSZ_TREE_BLK                    1
 #define LSZ_TREE_NODE_SIGNATURE         ('t' << 8 | 'r')
-#define is_tree_signature(node)         ((node) && ((node)->s == LSZ_TREE_NODE_SIGNATURE))
 
 #pragma pack(1)
 struct _lsz_tree_t {
-    uint16_t             s;
+    uint16_t             _;
     uint16_t             c;
     lsz_tree_t          *p;
     lsz_tree_t          *l;
     lsz_tree_t          *r;
-    void                *k;
-    void                *v;
 };
 #pragma pack( )
 
-
-void *tree_new (
-    size_t              ksize,
-    size_t              vsize,
-    lsz_compare_t       k_compare_callback
-);
-
-void tree_free (
-    void                *tree
-);
-
-int is_tree_empty (
-    const void          *tree
-);
-
-int is_tree_null_node (
+typedef void * (* lsz_tree_k_pointer_t) (
     const lsz_tree_t    *node
 );
 
+typedef void * (* lsz_tree_v_pointer_t) (
+    const lsz_tree_t    *node
+);
+
+typedef int  (* lsz_tree_k_compare_t) (
+    const void          *a,
+    const void          *b
+);
+
+typedef void (* lsz_tree_node_free_t) (
+    const lsz_tree_t    *node
+);
+
+int is_tree_signature(const lsz_tree_t *node);
+int is_tree_null_node(const lsz_tree_t *node);
+
+tree_t tree_new (
+    lsz_tree_k_pointer_t                fn_kptr,
+    lsz_tree_v_pointer_t                fn_vptr,
+    lsz_tree_k_compare_t                fn_kcmp,
+    lsz_tree_node_free_t                fn_free
+);
+
+void tree_free (
+    tree_t                              tree
+);
+
+int is_tree_empty (
+    const tree_t        tree
+);
+
 int tree_insert (
-    void                *tree,
-    const void          *k,
-    const void          *v
+    tree_t              tree,
+    lsz_tree_t         *node
 );
 
 void tree_delete (
@@ -203,38 +219,37 @@ void tree_delete (
     void                *k
 );
 
-void *tree_min (
-    const void          *tree
+void * tree_min (
+    const tree_t        tree
 );
 
-void *tree_max (
-    const void          *tree
+void * tree_max (
+    const tree_t        tree
 );
 
-void *tree_search (
-    const void          *tree,
+void * tree_search (
+    const tree_t        tree,
     const void          *k
 );
 
-void *tree_prev (
-    const void          *tree,
-    void               **k
+void * tree_prev (
+    const tree_t        tree,
+    void                **k
 );
 
-void *tree_next (
-    const void          *tree,
-    void               **k
+void * tree_next (
+    const tree_t        tree,
+    void                **k
 );
 
 typedef void (* lsz_tree_for_each_callback_t) (
-    const void                          *k,
-    void                                *v,
+    const lsz_tree_t                    *node,
     void                                *data
 );
 
 void tree_for_each (
-    const void                          *tree,
-    lsz_tree_for_each_callback_t         callback_func,
+    const tree_t                        tree,
+    lsz_tree_for_each_callback_t        callback_func,
     void                                *callback_data
 );
 
