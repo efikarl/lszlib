@@ -16,7 +16,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define LSZ_MAX_LINK    UINT16_MAX
 #define LSZ_LINK_SIG    ('l' << 24 | 'i' << 16 | 's' << 8 | 't')
 #define LSZ_LINK_VLD    0
 
@@ -41,23 +40,34 @@ typedef int (* lsz_list_callback_t) (
 int list_init (
     lsz_list_t          *list
 );
+
+int list_owns (
+    lsz_list_t          *dst_list,
+    lsz_list_t          *src_list
+);
+
 int is_list_valid (
     lsz_list_t          *list
 );
+
 int is_list_empty (
     lsz_list_t          *list
 );
+
 int list_insert_tail (
     lsz_list_t          *list,
     lsz_list_t          *link
 );
+
 int list_insert_head (
     lsz_list_t          *list,
     lsz_list_t          *link
 );
+
 int list_delete_link (
     lsz_list_t          *link
 );
+
 int list_for_each (
     lsz_list_t          *list,
     lsz_list_callback_t callback,

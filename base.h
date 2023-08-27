@@ -14,6 +14,8 @@
 #ifndef LSZ_BASE
 #define LSZ_BASE
 #include <stddef.h>
+#include <stdint.h>
+#include <assert.h>
 
 #define LSZ_RET_OK                      0    // 成功
 #define LSZ_RET_E_ARG                   (-1) // 参数
@@ -29,6 +31,9 @@
 
 #define base_of(ptr, type, field)       \
             ((type *) ((char *) (ptr) - offsetof(type, field)))
+
+#define of_str(a) #a
+#define str_of(a) of_str(a)
 
 typedef int (* lsz_compare_t) (const void *a, const void *b);
 

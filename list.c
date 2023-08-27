@@ -23,49 +23,45 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdbool.h>
+#include <assert.h>
 
 #include "base.h"
 #include "list.h"
 
 int list_init(lsz_list_t *list)
 {
-    if (list) {
-        list->prev = list;
-        list->next = list;
-    } else {
+    if (!list) {
         return LSZ_RET_E_ARG;
     }
+    list->prev = list;
+    list->next = list;
 
     return LSZ_RET_OK;
 }
 
 int is_list_valid(lsz_list_t *list)
 {
-#if LSZ_LINK_VLD
-    lsz_list_t *this = NULL;
-
     if (!list) {
-        return LSZ_RET_E_ARG;
+        return 0;
     }
-    int list_link_count = 0;
-    for (this = list->next; this != list; this = this->next) {
-        list_link_count++;
-        if (list_link_count == LSZ_MAX_LINK) {
-            return LSZ_RET_E_MAX;
-        }
+#if LSZ_LINK_VLD
+    volatile lsz_list_t *this = NULL;
+
+    for (this = list->next; (this) && (this != list); this = this->next);
+    if (this == list) {
+        return 1;
+    } else {
+        return 0;
     }
-    return LSZ_RET_OK;
 #else
-    return LSZ_RET_OK;
+    return 1;
 #endif
 }
 
 int is_list_empty(lsz_list_t *list)
 {
-    if (!list) {
-        return LSZ_RET_E_ARG;
-    }
+    assert(list);
+
     if ((list->next == list) && (list->prev == list)) {
         return 1;
     } else {
@@ -75,9 +71,8 @@ int is_list_empty(lsz_list_t *list)
 
 int list_insert_tail(lsz_list_t *list, lsz_list_t *link)
 {
-    int status = is_list_valid(list);
-    if (status < 0) {
-        return status;
+    if (!is_list_valid(list)) {
+        return LSZ_RET_E_ARG;
     }
     if (!link) {
         return LSZ_RET_E_ARG;
@@ -92,9 +87,8 @@ int list_insert_tail(lsz_list_t *list, lsz_list_t *link)
 
 int list_insert_head(lsz_list_t *list, lsz_list_t *link)
 {
-    int status = is_list_valid(list);
-    if (status < 0) {
-        return status;
+    if (!is_list_valid(list)) {
+        return LSZ_RET_E_ARG;
     }
     if (!link) {
         return LSZ_RET_E_ARG;
@@ -120,7 +114,6 @@ int list_delete_link(lsz_list_t *link)
 
 int list_for_each(lsz_list_t *list, lsz_list_callback_t fn, void *data)
 {
-    int status;
     lsz_list_t *this = NULL;
     lsz_list_t *next = NULL;
 
@@ -130,5 +123,22 @@ int list_for_each(lsz_list_t *list, lsz_list_callback_t fn, void *data)
     for (this = list->next, next = this->next; this != list; this = next, next = this->next) {
         if (fn) fn(list, this, data);
     }
-    return 0;
+    return LSZ_RET_OK;
+}
+
+int list_owns(lsz_list_t *dst_list, lsz_list_t *src_list)
+{
+    if (!dst_list) {
+        return LSZ_RET_E_ARG;
+    }
+
+    if (is_list_empty(src_list) || !is_list_valid(src_list)) {
+        return list_init(dst_list);
+    }
+    dst_list->prev = src_list->prev;
+    dst_list->next = src_list->next;
+    src_list->prev->next = dst_list;
+    src_list->next->prev = dst_list;
+
+    return LSZ_RET_OK;
 }

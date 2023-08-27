@@ -19,6 +19,7 @@
 #define LSZ_BASE
 #include <stddef.h>
 #include <stdint.h>
+#include <assert.h>
 
 #define LSZ_RET_OK                      0    // 成功
 #define LSZ_RET_E_ARG                   (-1) // 参数
@@ -34,6 +35,9 @@
 
 #define base_of(ptr, type, field)       \
             ((type *) ((char *) (ptr) - offsetof(type, field)))
+
+#define of_str(a) #a
+#define str_of(a) of_str(a)
 
 typedef int (* lsz_compare_t) (const void *a, const void *b);
 
@@ -100,7 +104,6 @@ int  lsz_scmp(const void *a, const void *b);
 #include <stdint.h>
 #include <stddef.h>
 
-#define LSZ_MAX_LINK    UINT16_MAX
 #define LSZ_LINK_SIG    ('l' << 24 | 'i' << 16 | 's' << 8 | 't')
 #define LSZ_LINK_VLD    0
 
@@ -125,23 +128,34 @@ typedef int (* lsz_list_callback_t) (
 int list_init (
     lsz_list_t          *list
 );
+
+int list_owns (
+    lsz_list_t          *dst_list,
+    lsz_list_t          *src_list
+);
+
 int is_list_valid (
     lsz_list_t          *list
 );
+
 int is_list_empty (
     lsz_list_t          *list
 );
+
 int list_insert_tail (
     lsz_list_t          *list,
     lsz_list_t          *link
 );
+
 int list_insert_head (
     lsz_list_t          *list,
     lsz_list_t          *link
 );
+
 int list_delete_link (
     lsz_list_t          *link
 );
+
 int list_for_each (
     lsz_list_t          *list,
     lsz_list_callback_t callback,
@@ -320,6 +334,12 @@ bool is_path_valid (
 
 int path_from(const path_node_t *src_node, size_t  src_len, char **dst_path);
 int path_into(const char *src_path, path_node_t **dst_node, size_t *dst_len);
+
+int path_index (
+    const char          *path,
+    path_node_t          name,
+    int                 *index
+);
 
 #endif
 
