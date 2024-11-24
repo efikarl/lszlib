@@ -3,17 +3,19 @@
 # 强制bash
 SHELL=/bin/bash
 
+SRC_DIRS := src/base src/perm /src/comb src/sort src/list src/tree src/path src/benchmark /src/testcase
+
 # 库类定义
 LIB := lszlib
+HDR := include/$(LIB).h
 OUT := lib$(LIB).a
-INS_LIB_DIR := ${HOME}/.local/lib/$(LIB)
-INS_HDR_DIR := ${HOME}/.local/include/$(LIB)
-SLK_LIB_DIR := /usr/local/lib
-SLK_HDR_DIR := /usr/local/include
+LIB_INS_DIR := ${HOME}/.local/lib/$(LIB)
+HDR_INS_DIR := ${HOME}/.local/include/$(LIB)
+LIB_SLK_DIR := /usr/local/lib
+HDR_SLK_DIR := /usr/local/include
 
 # 源与目标
-SRC := $(wildcard *.c)
-HDR := $(wildcard *.h)
+SRC := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
 OBJ := $(SRC:%.c=%.o)
 
 # 编译参数
@@ -21,17 +23,17 @@ CC      := gcc
 DEFINES :=
 CFLAGS  := -g
 LDFLAGS :=
-HDR_INC :=
+HDR_INC := $(addprefix -I,$(SRC_DIRS)) -Iinclude
 LIB_INC :=
 
 # 安装
 install: uninstall clean $(OUT)
-	@if [ ! -d $(INS_LIB_DIR) ]; then mkdir -p $(INS_LIB_DIR); fi
-	@if [ ! -d $(INS_HDR_DIR) ]; then mkdir -p $(INS_HDR_DIR); fi
-	@cp -f $(LIB).h $(INS_HDR_DIR)
-	@cp -f $(OUT)   $(INS_LIB_DIR)
-	@if [ ! -L $(SLK_LIB_DIR)/$(OUT)   ] && [ -f $(INS_LIB_DIR)/$(OUT)   ]; then sudo ln -sf $(INS_LIB_DIR)/$(OUT)   $(SLK_LIB_DIR)/$(OUT)  ; fi
-	@if [ ! -L $(SLK_HDR_DIR)/$(LIB).h ] && [ -f $(SLK_HDR_DIR)/$(LIB).h ]; then sudo ln -sf $(INS_HDR_DIR)/$(LIB).h $(SLK_HDR_DIR)/$(LIB).h; fi
+	@if [ ! -d $(LIB_INS_DIR) ]; then mkdir -p $(LIB_INS_DIR); fi
+	@if [ ! -d $(HDR_INS_DIR) ]; then mkdir -p $(HDR_INS_DIR); fi
+	@cp -f $(HDR) $(HDR_INS_DIR)
+	@cp -f $(OUT) $(LIB_INS_DIR)
+	@if [ ! -L $(LIB_SLK_DIR)/$(OUT)   ] && [ -f $(LIB_INS_DIR)/$(OUT)   ]; then sudo ln -sf $(LIB_INS_DIR)/$(OUT)   $(LIB_SLK_DIR)/$(OUT)  ; fi
+	@if [ ! -L $(HDR_SLK_DIR)/$(LIB).h ] && [ -f $(HDR_INS_DIR)/$(LIB).h ]; then sudo ln -sf $(HDR_INS_DIR)/$(LIB).h $(HDR_SLK_DIR)/$(LIB).h; fi
 
 # 链接
 $(OUT): $(OBJ)
@@ -55,10 +57,10 @@ endif
 
 # 卸载
 uninstall:
-	@$(RM) -rf $(INS_LIB_DIR)
-	@$(RM) -rf $(INS_HDR_DIR)
-	@if [ -L $(SLK_LIB_DIR)/$(OUT)   ]; then sudo $(RM) -f $(SLK_LIB_DIR)/$(OUT)   ; fi
-	@if [ -L $(SLK_HDR_DIR)/$(LIB).h ]; then sudo $(RM) -f $(SLK_HDR_DIR)/$(LIB).h ; fi
+	@$(RM) -rf $(LIB_INS_DIR)
+	@$(RM) -rf $(HDR_INS_DIR)
+	@if [ -L $(LIB_SLK_DIR)/$(OUT)   ]; then sudo $(RM) -f $(LIB_SLK_DIR)/$(OUT)   ; fi
+	@if [ -L $(HDR_SLK_DIR)/$(LIB).h ]; then sudo $(RM) -f $(HDR_SLK_DIR)/$(LIB).h ; fi
 
 # 清理
 clean:
