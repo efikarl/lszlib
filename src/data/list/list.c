@@ -114,19 +114,16 @@ int list_for_each(lsz_list_t *list, lsz_list_callback_t fn, void *data)
     return LSZ_RET_0_ERR;
 }
 
-int list_owns(lsz_list_t *dst_list, lsz_list_t *src_list)
+int list_replace_link(lsz_list_t *be_replace, lsz_list_t *to_replace)
 {
-    if (!dst_list) {
+    if (!be_replace || !to_replace) {
         return LSZ_RET_E_ARG;
     }
 
-    if (is_list_empty(src_list) || !is_list_valid(src_list)) {
-        return list_init(dst_list);
-    }
-    dst_list->prev = src_list->prev;
-    dst_list->next = src_list->next;
-    src_list->prev->next = dst_list;
-    src_list->next->prev = dst_list;
+    to_replace->prev = be_replace->prev;
+    to_replace->next = be_replace->next;
+    be_replace->prev->next = to_replace;
+    be_replace->next->prev = to_replace;
 
     return LSZ_RET_0_ERR;
 }

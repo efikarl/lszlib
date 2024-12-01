@@ -556,7 +556,7 @@ void testcase_apis(void)
     jnum_add(json1, "lo", 1);
     jnum_add(json1, "hi", 3);
     target = json_decode(json0);
-    expect = "{\"name\":\"karl\",\"pswd\":\"p0ss\",\"sub-object\":{\"hi\":3,\"lo\":1}}";
+    expect = "{\"name\":\"karl\",\"pswd\":\"p0ss\",\"sub-object\":{\"lo\":1,\"hi\":3}}";
     TESTCASE_ASSERT_DATA (
         target, expect, 0,
     "testcase_apis@json_decode.add.sub_object");
@@ -569,7 +569,7 @@ void testcase_apis(void)
     jboo_add(json0, "sub-object/table[]" , 0);
     jboo_add(json0, "sub-object/table[2]", 1);
     target = json_decode(json0);
-    expect = "{\"name\":\"karl\",\"pswd\":\"p0ss\",\"sub-object\":{\"hi\":3,\"lo\":1,\"table\":[true,false,true]}}";
+    expect = "{\"name\":\"karl\",\"pswd\":\"p0ss\",\"sub-object\":{\"lo\":1,\"hi\":3,\"table\":[true,false,true]}}";
     TESTCASE_ASSERT_DATA (
         target, expect, 0,
     "testcase_apis@json_decode.add.array.bool");
@@ -582,7 +582,7 @@ void testcase_apis(void)
     jnum_add(json0, "sub-object/array[]", 2);
     jnum_add(json0, "sub-object/array[]", 3);
     target = json_decode(json0);
-    expect = "{\"name\":\"karl\",\"pswd\":\"p0ss\",\"sub-object\":{\"array\":[1,2,3],\"hi\":3,\"lo\":1,\"table\":[true,false,true]}}";
+    expect = "{\"name\":\"karl\",\"pswd\":\"p0ss\",\"sub-object\":{\"lo\":1,\"hi\":3,\"table\":[true,false,true],\"array\":[1,2,3]}}";
     TESTCASE_ASSERT_DATA (
         target, expect, 0,
     "testcase_apis@json_decode.add.array.nums");
@@ -596,7 +596,7 @@ void testcase_apis(void)
     jobj_add(json0, "objects[]", NULL);
     jstr_add(json0, "objects[1]/string", "b");
     target = json_decode(json0);
-    expect = "{\"name\":\"karl\",\"objects\":[{\"string\":\"a\"},{\"string\":\"b\"}],\"pswd\":\"p0ss\",\"sub-object\":{\"array\":[1,2,3],\"hi\":3,\"lo\":1,\"table\":[true,false,true]}}";
+    expect = "{\"name\":\"karl\",\"pswd\":\"p0ss\",\"sub-object\":{\"lo\":1,\"hi\":3,\"table\":[true,false,true],\"array\":[1,2,3]},\"objects\":[{\"string\":\"a\"},{\"string\":\"b\"}]}";
     TESTCASE_ASSERT_DATA (
         target, expect, 0,
     "testcase_apis@json_decode.add.array.objects");
@@ -610,7 +610,7 @@ void testcase_apis(void)
     json_del(json0, "name");
     json_del(json0, "pswd");
     target = json_decode(json0);
-    expect = "{\"objects\":[{\"string\":\"a\"},{\"string\":\"b\"}],\"reserve\":null,\"sub-object\":{\"array\":[1,2,3],\"hi\":3,\"lo\":1,\"table\":[true,false,true]}}";
+    expect = "{\"sub-object\":{\"lo\":1,\"hi\":3,\"table\":[true,false,true],\"array\":[1,2,3]},\"objects\":[{\"string\":\"a\"},{\"string\":\"b\"}],\"reserve\":null}";
     TESTCASE_ASSERT_DATA (
         target, expect, 0,
     "testcase_apis@json_decode.del.string");
@@ -621,7 +621,7 @@ void testcase_apis(void)
 
     json_del(json0, "sub-object/table[1]");
     target = json_decode(json0);
-    expect = "{\"objects\":[{\"string\":\"a\"},{\"string\":\"b\"}],\"reserve\":null,\"sub-object\":{\"array\":[1,2,3],\"hi\":3,\"lo\":1,\"table\":[true,true]}}";
+    expect = "{\"sub-object\":{\"lo\":1,\"hi\":3,\"table\":[true,true],\"array\":[1,2,3]},\"objects\":[{\"string\":\"a\"},{\"string\":\"b\"}],\"reserve\":null}";
     TESTCASE_ASSERT_DATA (
         target, expect, 0,
     "testcase_apis@json_decode.del.array.member");

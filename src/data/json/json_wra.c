@@ -20,26 +20,143 @@ apis
 */
 
 int
+jboo_add (
+    json_t              json,
+    char               *path,
+    long                data
+    )
+{
+    int                 r = LSZ_RET_0_ERR;
+    lsz_json_t          unit;
+
+    unit.type = json_t_boo;
+    unit.data.num   = data;
+
+    r = json_add(json, path, &unit);
+    if (r) {
+        goto eofn;
+    }
+
+eofn:
+    return r;
+}
+
+int
+jnum_add (
+    json_t              json,
+    char               *path,
+    long                data
+    )
+{
+    int                 r = LSZ_RET_0_ERR;
+    lsz_json_t          unit;
+
+    unit.type = json_t_num;
+    unit.data.num   = data;
+
+    r = json_add(json, path, &unit);
+    if (r) {
+        goto eofn;
+    }
+
+eofn:
+    return r;
+}
+
+int
+jnul_add (
+    json_t              json,
+    char               *path
+    )
+{
+    int                 r = LSZ_RET_0_ERR;
+    lsz_json_t          unit;
+
+    unit.type = json_t_nul;
+    unit.data.str   = NULL;
+
+    r = json_add(json, path, &unit);
+    if (r) {
+        goto eofn;
+    }
+
+eofn:
+    return r;
+}
+
+int
+jstr_add (
+    json_t              json,
+    char               *path,
+    char               *data
+    )
+{
+    int                 r = LSZ_RET_0_ERR;
+    lsz_json_t          unit;
+
+    unit.type = json_t_str;
+    unit.data.str   = data;
+
+    r = json_add(json, path, &unit);
+    if (r) {
+        goto eofn;
+    }
+
+eofn:
+    return r;
+}
+
+int
+jobj_add (
+    json_t              json,
+    char               *path,
+    json_t              data
+    )
+{
+    int                 r    = LSZ_RET_0_ERR;
+    lsz_json_t         *unit = data ? data : json_new();
+
+    if (!unit) {
+        r = LSZ_RET_E_OUT;
+        goto eofn;
+    }
+    if (unit->signature != LSZ_JSON_SIGNATURE) {
+        r = LSZ_RET_E_ARG;
+        goto eofn;
+    }
+    r = json_add(json, path, unit);
+    if (r) {
+        goto eofn;
+    }
+
+eofn:
+    return r;
+}
+
+/*
+--------------------------------------------------------------------------------
+*/
+
+int
 jboo_get (
     json_t              json,
     char               *path,
     long               *data
     )
 {
-    int                 r = LSZ_RET_0_ERR;
-    lsz_json_type_t     type0;
-    lsz_json_data_t     data0;
+    int                 r    = LSZ_RET_0_ERR;
+    lsz_json_t         *unit = NULL;
 
-    r = json_get(json, path, &type0, &data0);
+    r = json_get(json, path, &unit);
     if (r) {
         goto eofn;
     }
-    if (type0 != json_t_boo) {
+    if (unit->type != json_t_boo) {
         r = LSZ_RET_E_ARG;
         goto eofn;
     }
 
-    *data = data0.num;
+    *data = unit->data.num;
 
 eofn:
     return r;
@@ -52,20 +169,19 @@ jnum_get (
     long               *data
     )
 {
-    int                 r = LSZ_RET_0_ERR;
-    lsz_json_type_t     type0;
-    lsz_json_data_t     data0;
+    int                 r    = LSZ_RET_0_ERR;
+    lsz_json_t         *unit = NULL;
 
-    r = json_get(json, path, &type0, &data0);
+    r = json_get(json, path, &unit);
     if (r) {
         goto eofn;
     }
-    if (type0 != json_t_num) {
+    if (unit->type != json_t_num) {
         r = LSZ_RET_E_ARG;
         goto eofn;
     }
 
-    *data = data0.num;
+    *data = unit->data.num;
 
 eofn:
     return r;
@@ -77,15 +193,14 @@ jnul_get (
     char               *path
     )
 {
-    int                 r = LSZ_RET_0_ERR;
-    lsz_json_type_t     type0;
-    lsz_json_data_t     data0;
+    int                 r    = LSZ_RET_0_ERR;
+    lsz_json_t         *unit = NULL;
 
-    r = json_get(json, path, &type0, &data0);
+    r = json_get(json, path, &unit);
     if (r) {
         goto eofn;
     }
-    if (type0 != json_t_nul) {
+    if (unit->type != json_t_nul) {
         r = LSZ_RET_E_ARG;
         goto eofn;
     }
@@ -101,20 +216,19 @@ jstr_get (
     char              **data
     )
 {
-    int                 r = LSZ_RET_0_ERR;
-    lsz_json_type_t     type0;
-    lsz_json_data_t     data0;
+    int                 r    = LSZ_RET_0_ERR;
+    lsz_json_t         *unit = NULL;
 
-    r = json_get(json, path, &type0, &data0);
+    r = json_get(json, path, &unit);
     if (r) {
         goto eofn;
     }
-    if (type0 != json_t_str) {
+    if (unit->type != json_t_str) {
         r = LSZ_RET_E_ARG;
         goto eofn;
     }
 
-    *data = strdup(data0.str); // free by caller
+    *data = strdup(unit->data.str); // free by caller
 
 eofn:
     return r;
@@ -127,20 +241,19 @@ jobj_get (
     json_t             *data
     )
 {
-    int                 r = LSZ_RET_0_ERR;
-    lsz_json_type_t     type0;
-    lsz_json_data_t     data0;
+    int                 r    = LSZ_RET_0_ERR;
+    lsz_json_t         *unit = NULL;
 
-    r = json_get(json, path, &type0, &data0);
+    r = json_get(json, path, &unit);
     if (r) {
         goto eofn;
     }
-    if (type0 != json_t_obj) {
+    if (unit->type != json_t_obj) {
         r = LSZ_RET_E_ARG;
         goto eofn;
     }
 
-    *data = data0.obj.json; // note: it is object itself (others is just a copy)
+    *data = unit; // note: it is not a copy of json_t
 
 eofn:
     return r;
@@ -158,9 +271,12 @@ jboo_set (
     )
 {
     int                 r = LSZ_RET_0_ERR;
-    lsz_json_data_t     data0 = { .num = data };
+    lsz_json_t          unit;
 
-    r = json_set(json, path, json_t_boo, data0);
+    unit.type = json_t_boo;
+    unit.data.num   = data;
+
+    r = json_set(json, path, &unit);
     if (r) {
         goto eofn;
     }
@@ -177,9 +293,12 @@ jnum_set (
     )
 {
     int                 r = LSZ_RET_0_ERR;
-    lsz_json_data_t     data0 = { .num = data };
+    lsz_json_t          unit;
 
-    r = json_set(json, path, json_t_num, data0);
+    unit.type = json_t_num;
+    unit.data.num   = data;
+
+    r = json_set(json, path, &unit);
     if (r) {
         goto eofn;
     }
@@ -195,9 +314,12 @@ jnul_set (
     )
 {
     int                 r = LSZ_RET_0_ERR;
-    lsz_json_data_t     data0;
+    lsz_json_t          unit;
 
-    r = json_set(json, path, json_t_nul, data0);
+    unit.type = json_t_nul;
+    unit.data.str   = NULL;
+
+    r = json_set(json, path, &unit);
     if (r) {
         goto eofn;
     }
@@ -214,9 +336,12 @@ jstr_set (
     )
 {
     int                 r = LSZ_RET_0_ERR;
-    lsz_json_data_t     data0 = { .str = data };
+    lsz_json_t          unit;
 
-    r = json_set(json, path, json_t_str, data0);
+    unit.type = json_t_str;
+    unit.data.str   = data;
+
+    r = json_set(json, path, &unit);
     if (r) {
         goto eofn;
     }
@@ -232,81 +357,24 @@ jobj_set (
     json_t              data
     )
 {
-    int                 r = LSZ_RET_0_ERR;
-    lsz_json_data_t     data0 = { .obj.json = data };
+    int                 r    = LSZ_RET_0_ERR;
+    lsz_json_t         *unit = data ? data : json_new();
 
-    r = json_set(json, path, json_t_obj, data0);
+    if (!unit) {
+        r = LSZ_RET_E_OUT;
+        goto eofn;
+    }
+    if (unit->signature != LSZ_JSON_SIGNATURE) {
+        r = LSZ_RET_E_ARG;
+        goto eofn;
+    }
+    r = json_set(json, path, unit);
     if (r) {
         goto eofn;
     }
 
 eofn:
     return r;
-}
-
-/*
---------------------------------------------------------------------------------
-*/
-
-int
-jboo_add (
-    json_t              json,
-    char               *path,
-    long                data
-    )
-{
-    lsz_json_data_t     data0;
-
-    data0.num = (data != 0);
-    return json_add(json, path, json_t_boo, &data0);
-}
-
-int
-jnum_add (
-    json_t              json,
-    char               *path,
-    long                data
-    )
-{
-    lsz_json_data_t     data0;
-
-    data0.num = data;
-    return json_add(json, path, json_t_num, &data0);
-}
-
-int
-jnul_add (
-    json_t              json,
-    char               *path
-    )
-{
-    return json_add(json, path, json_t_nul, NULL);
-}
-
-int
-jstr_add (
-    json_t              json,
-    char               *path,
-    char               *data
-    )
-{
-    lsz_json_data_t     data0;
-
-    data0.str = data;
-    return json_add(json, path, json_t_str, &data0);
-}
-
-int
-jobj_add (
-    json_t              json,
-    char               *path,
-    json_t             *data
-    )
-{
-    lsz_json_data_t     data0;
-
-    data0.obj.json = data;
-    return json_add(json, path, json_t_obj, &data0);
 }
 
 /*

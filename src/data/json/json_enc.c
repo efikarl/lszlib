@@ -78,15 +78,15 @@ lsz_jtok_encode (
     char               *text    = *rest;
 
     text = skip_ws(text);
+
     if (text[0] != token) {
         r = LSZ_RET_E_FMT;
         goto eofn;
     } else {
         text++;
     }
-    text = skip_ws(text);
 
-   *rest = text;
+    *rest = skip_ws(text);
 
 eofn:
     return r;
@@ -512,14 +512,12 @@ lsz_jarr_encode (
     if (r) {
         r = LSZ_RET_E_FMT;
         goto eofn;
-    } else {
-        if (path) { free(path); path = NULL; }
     }
     *rest = text;
 
 eofn:
-    if (r) {
-        if (path) { free(path); path = NULL; }
+    if (path) {
+        free (path);
     }
     return r;
 }

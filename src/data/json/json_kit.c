@@ -20,7 +20,7 @@ by json_api.c
 */
 
 int
-jarr_node_from_path_node (
+lsz_jarr_node_init (
     const  char        *path,
     lsz_jarr_node_t    *node
     )
@@ -95,7 +95,7 @@ eofn:
 }
 
 int
-is_path_of_jarr (
+is_path_of_lsz_jarr (
     char               *path,
     lsz_jarr_node_t    *node
     )
@@ -107,7 +107,7 @@ is_path_of_jarr (
 
     r = path_into(path, &vect, &cntv);
 
-    r = jarr_node_from_path_node (
+    r = lsz_jarr_node_init (
             vect[cntv-1],
             node);
     if (vect) {

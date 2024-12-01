@@ -13,18 +13,6 @@
 --*/
 #include "json_prv.h"
 
-void
-lsz_json_for_each_decode_type (
-    const lsz_rb_node_t   *node,
-    void               *ctxt
-    );
-
-void
-lsz_json_for_each_decode_data (
-    const lsz_rb_node_t   *node,
-    void               *ctxt
-    );
-
 /*
 --------------------------------------------------------------------------------
 type
@@ -35,7 +23,7 @@ typedef struct {
     char *              head;
     char *              tail;
     size_t              size;
-} lsz_json_text_t;
+} lsz_text_t;
 
 /*
 --------------------------------------------------------------------------------
@@ -46,7 +34,7 @@ impl
 static
 int
 lsz_txtcatf (
-    lsz_json_text_t    *text,
+    lsz_text_t         *text,
     size_t              bfsz,
     const      char    *format,
                         ...
@@ -61,17 +49,8 @@ lsz_txtcatf (
     size_t              src_strsz = 0;
     size_t              new_strsz = 0;
     size_t              new_bufsz = 0;
-    va_list             args;
 
-    if (!text) {
-        r = LSZ_RET_E_ARG;
-        goto eofn;
-    }
-    if (text->tail < text->head) {
-        r = LSZ_RET_E_ARG;
-        goto eofn;
-    }
-    if (!bfsz) {
+    if ((!text) || (text->tail < text->head) || (!bfsz)) {
         r = LSZ_RET_E_ARG;
         goto eofn;
     }
@@ -85,7 +64,7 @@ lsz_txtcatf (
         r = LSZ_RET_E_OUT;
         goto eofn;
     }
-    va_start(args, format); src_strsz = vsnprintf(src, bfsz + 1, format, args); va_end(args);
+    va_list args; va_start(args, format); src_strsz = vsnprintf(src, bfsz + 1, format, args); va_end(args);
     if (!src_strsz) {
         r = LSZ_RET_E_OUT;
         goto eofn;
@@ -125,135 +104,26 @@ eofn:
 */
 
 void
-lsz_jobj_decode_type (
-    json_t              json,
-    lsz_json_text_t    *text
-    )
-{
-    lsz_txtcatf(text, 1, "{");
-    rb_tree_for_each(json, lsz_json_for_each_decode_type, text);
-    //
-    // if end of member, eat ','
-    //
-    if (text->tail[-1] == ',') {
-        text->tail[-1] = '\0';
-        text->tail--;
-    }
-    lsz_txtcatf(text, 1, "}");
-}
+lsz_jobj_decode (
+    lsz_json_t         *json,
+    lsz_text_t         *text
+    );
 
 void
-lsz_jarr_decode_type (
-    lsz_json_data_t    *data,
-    lsz_json_text_t    *text
-    )
-{
-    lsz_list_t         *link = NULL;
-    lsz_jarr_t         *jarr = NULL;
-
-    lsz_txtcatf(text, 1, "[");
-    for (link = data->arr.list.next; link != &data->arr.list; link = link->next) {
-        jarr = base_of(link, lsz_jarr_t, link);
-        switch (data->arr.type) {
-        case json_t_boo:
-            lsz_txtcatf(text, LSZ_JSON_BFSZ,
-                "%s",
-                "true");
-            break;
-        case json_t_num:
-            lsz_txtcatf(text, LSZ_JSON_BFSZ,
-                "%d",
-                0x0001);
-            break;
-        case json_t_nul:
-            lsz_txtcatf(text, LSZ_JSON_BFSZ,
-                "%s",
-                "null");
-            break;
-        case json_t_str:
-            lsz_txtcatf(text, LSZ_JSON_BFSZ,
-                "\"%s\"",
-                "****");
-            break;
-        case json_t_obj:
-            lsz_jobj_decode_type (
-                jarr->data.obj.json,
-                text);
-            break;
-        case json_t_arr:
-            lsz_jarr_decode_type (
-                &jarr->data,
-                text);
-            break;
-        default:
-            break;
-        }
-        break; // the first member for type is ok
-    }
-    lsz_txtcatf(text, 1, "]");
-}
-
-void
-lsz_json_for_each_decode_type (
-    const lsz_rb_node_t   *node,
-    void               *ctxt
-    )
-{
-    int                 r    = LSZ_RET_0_ERR;
-    lsz_json_text_t    *text = (lsz_json_text_t *) ctxt;
-    lsz_json_t         *unit = base_of(node, lsz_json_t, node);
-
-    switch (unit->type) {
-    case json_t_boo:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ,
-            "\"%s\":%s",
-            unit->name, "true");
-        break;
-    case json_t_num:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ,
-            "\"%s\":%d",
-            unit->name, 0x0001);
-        break;
-    case json_t_nul:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ,
-            "\"%s\":%s",
-            unit->name, "null");
-        break;
-    case json_t_str:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ,
-            "\"%s\":\"%s\"",
-            unit->name, "****");
-        break;
-    case json_t_obj:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ, "\"%s\":", unit->name);
-        lsz_jobj_decode_type (
-            unit->data.obj.json,
-            text);
-        break;
-    case json_t_arr:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ, "\"%s\":", unit->name);
-        lsz_jarr_decode_type (
-            &unit->data,
-            text);
-        break;
-    default:
-        r = LSZ_RET_E_ARG;
-        break;
-    }
-    if (!r) {
-        lsz_txtcatf(text, 1, ",");
-    }
-}
+lsz_jarr_decode (
+    lsz_json_t         *json,
+    lsz_text_t         *text
+    );
 
 char *
-lsz_json_decode_type (
-    json_t              json
+lsz_json_decode (
+    lsz_json_t         *json
     )
 {
     char               *rslt = NULL;
-    lsz_json_text_t     text;
+    lsz_text_t          text;
 
-    if (!json) {
+    if ((!json) || (json->signature != LSZ_JSON_SIGNATURE)) {
         goto eofn;
     }
 
@@ -261,62 +131,100 @@ lsz_json_decode_type (
     text.tail = text.head;
     text.size = 0;
     if (!text.head) {
-        return NULL;
+        goto eofn;
     }
-    lsz_jobj_decode_type(json, &text);
+    lsz_jobj_decode(json, &text);
     rslt = strdup(text.head);
+
+eofn:
     if (text.head) {
         free(text.head);
     }
-
-eofn:
     return rslt;
 }
 
-/*
---------------------------------------------------------------------------------
-*/
-
 void
-lsz_jobj_decode_data (
-    json_t              json,
-    lsz_json_text_t    *text
+lsz_jobj_decode (
+    lsz_json_t         *json,
+    lsz_text_t         *text
     )
 {
+    int                 r    = LSZ_RET_0_ERR;
+    lsz_list_t         *link = NULL;
+    lsz_json_t         *unit = NULL;
+
     lsz_txtcatf(text, 1, "{");
-    rb_tree_for_each(json, lsz_json_for_each_decode_data, text);
-    //
-    // if end of member, eat ','
-    //
-    if (text->tail[-1] == ',') {
-        text->tail[-1] = '\0';
-        text->tail--;
+    for (link = json->data.obj.list.next; link != &json->data.obj.list; link = link->next) {
+        unit = base_of(link, lsz_json_t, link);
+        if ((!unit) || (unit->signature != LSZ_JSON_SIGNATURE)) {
+            assert(0);
+        }
+        switch (unit->type) {
+        case json_t_boo:
+            lsz_txtcatf(text, LSZ_JSON_BFSZ,
+                "\"%s\":%s",
+                unit->name, unit->data.num ? "true" : "false");
+            break;
+        case json_t_num:
+            lsz_txtcatf(text, LSZ_JSON_BFSZ,
+                "\"%s\":%d",
+                unit->name, unit->data.num);
+            break;
+        case json_t_nul:
+            lsz_txtcatf(text, LSZ_JSON_BFSZ,
+                "\"%s\":%s",
+                unit->name, "null");
+            break;
+        case json_t_str:
+            lsz_txtcatf(text, LSZ_JSON_BFSZ,
+                "\"%s\":\"%s\"",
+                unit->name, unit->data.str);
+            break;
+        case json_t_obj:
+            lsz_txtcatf(text, LSZ_JSON_BFSZ, "\"%s\":", unit->name);
+            lsz_jobj_decode(unit, text);
+            break;
+        case json_t_arr:
+            lsz_txtcatf(text, LSZ_JSON_BFSZ, "\"%s\":", unit->name);
+            lsz_jarr_decode(unit, text);
+            break;
+        default:
+            r = LSZ_RET_E_ARG;
+            break;
+        }
+        if (link->next != &json->data.obj.list) {
+            // if not end of member, append ','
+            lsz_txtcatf(text, 1, ",");
+        }
     }
     lsz_txtcatf(text, 1, "}");
 }
 
 void
-lsz_jarr_decode_data (
-    lsz_json_data_t    *data,
-    lsz_json_text_t    *text
+lsz_jarr_decode (
+    lsz_json_t         *json,
+    lsz_text_t         *text
     )
 {
     lsz_list_t         *link = NULL;
-    lsz_jarr_t         *jarr = NULL;
+    lsz_json_t         *unit = NULL;
 
     lsz_txtcatf(text, 1, "[");
-    for (link = data->arr.list.next; link != &data->arr.list; link = link->next) {
-        jarr = base_of(link, lsz_jarr_t, link);
-        switch (data->arr.type) {
+    for (link = json->data.arr.list.next; link != &json->data.arr.list; link = link->next) {
+        unit = base_of(link, lsz_json_t, link);
+        if ((!unit) || (unit->signature != LSZ_JSON_SIGNATURE)) {
+            assert(0);
+        }
+        switch (unit->type) {
         case json_t_boo:
             lsz_txtcatf(text, LSZ_JSON_BFSZ,
                 "%s",
-                jarr->data.num ? "true" : "false");
+                unit->data.num ? "true" : "false");
             break;
         case json_t_num:
             lsz_txtcatf(text, LSZ_JSON_BFSZ,
                 "%d",
-                jarr->data.num);
+                unit->data.num);
             break;
         case json_t_nul:
             lsz_txtcatf(text, LSZ_JSON_BFSZ,
@@ -326,109 +234,23 @@ lsz_jarr_decode_data (
         case json_t_str:
             lsz_txtcatf(text, LSZ_JSON_BFSZ,
                 "\"%s\"",
-                jarr->data.str);
+                unit->data.str);
             break;
         case json_t_obj:
-            lsz_jobj_decode_data (
-                jarr->data.obj.json,
-                text);
+            lsz_jobj_decode(unit, text);
             break;
         case json_t_arr:
-            lsz_jarr_decode_data (
-                &jarr->data,
-                text);
+            lsz_jarr_decode(unit, text);
             break;
         default:
             break;
         }
-        //
-        // if not end of member, append ','
-        //
-        if (link->next != &data->arr.list) {
+        if (link->next != &json->data.arr.list) {
+            // if not end of member, append ','
             lsz_txtcatf(text, 1, ",");
         }
     }
     lsz_txtcatf(text, 1, "]");
-}
-
-void
-lsz_json_for_each_decode_data (
-    const lsz_rb_node_t   *node,
-    void               *ctxt
-    )
-{
-    int                 r    = LSZ_RET_0_ERR;
-    lsz_json_text_t    *text = (lsz_json_text_t *) ctxt;
-    lsz_json_t         *unit = base_of(node, lsz_json_t, node);
-
-    switch (unit->type) {
-    case json_t_boo:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ,
-            "\"%s\":%s",
-            unit->name, unit->data.num ? "true" : "false");
-        break;
-    case json_t_num:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ,
-            "\"%s\":%d",
-            unit->name, unit->data.num);
-        break;
-    case json_t_nul:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ,
-            "\"%s\":%s",
-            unit->name, "null");
-        break;
-    case json_t_str:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ,
-            "\"%s\":\"%s\"",
-            unit->name, unit->data.str);
-        break;
-    case json_t_obj:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ, "\"%s\":", unit->name);
-        lsz_jobj_decode_data (
-            unit->data.obj.json,
-            text);
-        break;
-    case json_t_arr:
-        lsz_txtcatf(text, LSZ_JSON_BFSZ, "\"%s\":", unit->name);
-        lsz_jarr_decode_data (
-            &unit->data,
-            text);
-        break;
-    default:
-        r = LSZ_RET_E_ARG;
-        break;
-    }
-    if (!r) {
-        lsz_txtcatf(text, 1, ",");
-    }
-}
-
-char *
-lsz_json_decode_data (
-    json_t              json
-    )
-{
-    char               *rslt = NULL;
-    lsz_json_text_t     text;
-
-    if (!json) {
-        goto eofn;
-    }
-
-    text.head = calloc(1, LSZ_JSON_BFSZ);
-    text.tail = text.head;
-    text.size = 0;
-    if (!text.head) {
-        return NULL;
-    }
-    lsz_jobj_decode_data(json, &text);
-    rslt = strdup(text.head);
-    if (text.head) {
-        free(text.head);
-    }
-
-eofn:
-    return rslt;
 }
 
 /*
@@ -442,7 +264,7 @@ json_decode (
     json_t              json
     )
 {
-    return lsz_json_decode_data(json);
+    return lsz_json_decode(json);
 }
 
 /*

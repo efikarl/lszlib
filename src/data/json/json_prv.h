@@ -24,7 +24,6 @@ type (json)
 */
 
 typedef struct _lsz_json_t lsz_json_t;
-typedef struct _lsz_jarr_t lsz_jarr_t;
 
 typedef enum   _lsz_json_type_t {
     json_t_non = 0,
@@ -34,21 +33,14 @@ typedef enum   _lsz_json_type_t {
     json_t_str,
     json_t_obj,
     json_t_arr,
+    json_t_end,
 } lsz_json_type_t;
 
 typedef struct _lsz_json_child_obj_t {
-#if 0
-    lsz_json_type_t     rsvd;
-    size_t              cnta;
     lsz_list_t          list;
-#else
-    json_t              json;
-#endif
 } lsz_json_child_obj_t;
 
 typedef struct _lsz_json_child_arr_t {
-    lsz_json_type_t     type;
-    size_t              cnta;
     lsz_list_t          list;
 } lsz_json_child_arr_t;
 
@@ -59,18 +51,11 @@ typedef union  _lsz_json_data_t {
     lsz_json_child_arr_t arr;
 } lsz_json_data_t;
 
+#define LSZ_JSON_SIGNATURE    ('j' << 0 | 's' << 8 | 'o' << 16 | 'n' << 24)
 struct _lsz_json_t {
+    uint32_t            signature;
     lsz_json_type_t     type;
     char               *name;
-    lsz_json_data_t     data;
-#if 0
-    lsz_list_t          link;
-#else
-    lsz_rb_node_t       node;
-#endif
-};
-
-struct _lsz_jarr_t {
     lsz_json_data_t     data;
     lsz_list_t          link;
 };
@@ -87,24 +72,21 @@ int
 json_add (
     json_t              json,
     char               *path,
-    lsz_json_type_t     type,
-    lsz_json_data_t    *data
+    lsz_json_t         *unit
     );
 
 int
 json_get (
     json_t              json,
     char               *path,
-    lsz_json_type_t    *type,
-    lsz_json_data_t    *data
+    lsz_json_t        **unit
     );
 
 int
 json_set (
     json_t              json,
     char               *path,
-    lsz_json_type_t     type,
-    lsz_json_data_t     data
+    lsz_json_t         *unit
     );
 
 int
@@ -113,7 +95,7 @@ json_del (
     char               *path
     );
 
-void
+int
 json_free (
     json_t              json
     );
@@ -132,17 +114,16 @@ typedef struct {
     int                 is_empty;
     size_t              level;
     size_t              index[LSZ_JARR_LEVEL];
-    size_t              found;
 } lsz_jarr_node_t;
 
 int
-jarr_node_from_path_node (
+lsz_jarr_node_init (
     const  char        *vect,
     lsz_jarr_node_t    *path
     );
 
 int
-is_path_of_jarr (
+is_path_of_lsz_jarr (
     char               *path,
     lsz_jarr_node_t    *node
     );

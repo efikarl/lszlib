@@ -260,11 +260,6 @@ list_free (
     lsz_list_callback_t fn
 );
 
-int list_owns (
-    lsz_list_t          *dst_list,
-    lsz_list_t          *src_list
-);
-
 int is_list_valid (
     lsz_list_t          *list
 );
@@ -285,6 +280,11 @@ int list_insert_head (
 
 int list_delete_link (
     lsz_list_t          *link
+);
+
+int list_replace_link (
+    lsz_list_t          *be_replace,
+    lsz_list_t          *to_replace
 );
 
 int list_for_each (
@@ -562,7 +562,7 @@ json_new (
     void
     );
 
-void
+int
 json_free (
     json_t              json
     );
@@ -666,7 +666,7 @@ int
 jobj_add (
     json_t              json,
     char               *path,
-    json_t             *data
+    json_t              data
     );
 
 int
